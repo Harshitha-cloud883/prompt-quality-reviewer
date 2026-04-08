@@ -1,0 +1,93 @@
+name: prompt-quality-reviewer
+version: "1.0.0"
+description: >
+  A real-world OpenEnv environment where AI agents evaluate and improve the quality
+  of prompts. Agents analyze prompts for clarity, specificity, and effectiveness,
+  assign quality scores, provide structured feedback, and optionally rewrite prompts.
+  Tasks range from easy (vague one-liners) to hard (complex system prompts).
+
+author: Harshitha R
+license: MIT
+
+# ─── Task Configuration ───────────────────────────────────────────────────────
+tasks:
+  total: 9
+  difficulties:
+    easy:
+      count: 3
+      score_range: [0.0, 0.35]
+      description: "Short, obviously poor prompts missing basic context"
+    medium:
+      count: 3
+      score_range: [0.35, 0.60]
+      description: "Prompts with partial information but missing key constraints"
+    hard:
+      count: 3
+      score_range: [0.55, 0.75]
+      description: "Complex prompts like system prompts, few-shot templates, meta-prompts"
+
+# ─── Action Space ─────────────────────────────────────────────────────────────
+action_space:
+  type: object
+  fields:
+    score:
+      type: float
+      range: [0.0, 1.0]
+      required: true
+      description: "Estimated quality score for the given prompt"
+    feedback:
+      type: string
+      required: true
+      description: "Detailed explanation identifying prompt weaknesses and strengths"
+    improved_prompt:
+      type: string
+      required: false
+      description: "Optional rewritten version of the prompt with issues resolved"
+
+# ─── Observation Space ────────────────────────────────────────────────────────
+observation_space:
+  type: object
+  fields:
+    prompt:
+      type: string
+      description: "The prompt to evaluate"
+    task_description:
+      type: string
+      nullable: true
+      description: "Feedback the agent provided in the previous step"
+
+# ─── Reward Function ──────────────────────────────────────────────────────────
+reward:
+  type: float
+  range: [0.0, 1.0]
+  partial_progress: true
+  components:
+    score_accuracy:
+      weight: 0.40
+      description: "How close the agent's score is to the ground truth score"
+    feedback_quality:
+      weight: 0.35
+      description: "How many real issues the feedback identifies"
+    improvement_quality:
+      weight: 0.25
+      description: "Quality of the rewritten prompt (if provided)"
+
+# ─── Environment Parameters ───────────────────────────────────────────────────
+environment:
+  max_steps_per_task: 2
+  early_advance_threshold: 0.75
+  total_tasks: 9
+  entry_point: "environment:PromptQualityEnv"
+
+# ─── Evaluation ───────────────────────────────────────────────────────────────
+evaluation:
+  metric: average_reward
+  baseline_score: 0.35
+  target_score: 0.70
+  grader: "grader:PromptQualityGrader"
+
+# ─── Dependencies ─────────────────────────────────────────────────────────────
+dependencies:
+  python: ">=3.10"
+  packages:
+    - pydantic>=2.0
